@@ -11,8 +11,9 @@ byte showDataKind = 0;
 int nagr = 11; // пин вывода нагревательного элемента(через транзистор)
 byte regul = A1; //пин переменного резистора для задания температуры
 int tin = 0; // Пин Датчика температуры IN Analog через LM358N
-int tdat = 0; // переменная считанной температуры
-int p_tdat = 0; //предыдущее значение температуры
+int tdat = 25; // переменная считанной температуры
+//int p_tdat = tdat; //предыдущее значение температуры
+//byte p_count = 0; //счетчик пропусков значений
 volatile int ustt =  0; // Выставленная температура по умолчанию (+ увеличение и уменьшение при нажатии кнопок)
 int mintemp = 100; // Минимальная температура
 int maxtemp = 360; // Максимальная температура 
@@ -35,15 +36,21 @@ void getFactTemp () {
   tdat = analogRead(tin)>>2; // Считать состояние датчика температуры и присвоить tdat
   tdat = tdat + analogRead(tin)>>2;
   tdat = tdat / 2;
-  tdat =map(tdat,0,50,25,450); // калибровка п умолчанию 0,430,25,310 90
-  if (tdat - 20 < p_tdat) { tdat = p_tdat; } //остывание за один такт на 20 градусов считаю невероятным и отбрасываю
-   else { p_dat = tdat; }
+  tdat =map(tdat,0,80,25,450); // калибровка п умолчанию 0,430,25,310 90
+  /*
+  if (p_count < 3) {
+    if (tdat - 30 < p_tdat) { tdat = p_tdat; p_count++; } //остывание за один такт на 30 градусов считаю невероятным и отбрасываю
+     else { if (tdat + 30 > p_tdat) { tdat = p_tdat; p_count++; } //как впрочем и нагрев
+      else { p_tdat = tdat; p_count = 0; }}
+  }
+  */
 }
 
 
 void setup(){  
   delay(1000); //в выдаче на сегменты используются ttl пины, поэтому для легкой прошивки введена задержка
   pinMode(nagr, OUTPUT);     // Порт нагрузки (паяльника) настраиваем на выход
+  pinMode(tin, INPUT);
   getFactTemp ();
   Input = tdat;
   Setpoint = getNeedTemp();
@@ -73,6 +80,6 @@ void loop() {
   myPID.Compute();
   nshim = Output;
   analogWrite(nagr, nshim);
-
+//analogWrite(nagr, 220);
 }
 
