@@ -1,5 +1,6 @@
 #include "segment_7.h"
 #include "PID_v1.h"
+#include "pwmFreq.h"
 
 int count_delay = 100; //частота опроса датчика паяльника
 int count_delay_2 = 1000; //частота считывания переменного резистора, задающего температуру
@@ -20,7 +21,8 @@ int maxtemp = 360; // Максимальная температура
 int nshim = 0; // Начальное значение шим для нагрузки 
 double Setpoint=0.0, Input=0.0, Output=0.0; // переменные pid
 
-double Kp=3.8, Ki=0.00001, Kd=0.9; //настройки pid
+//double Kp=3.8, Ki=0.00001, Kd=0.9; //настройки pid
+double Kp=10, Ki=0.001, Kd=2; //настройки pid
 
 PID myPID(&Input, &Output, &Setpoint, Kp, Ki, Kd, DIRECT);
 
@@ -33,10 +35,10 @@ int getNeedTemp () {
 }
 
 void getFactTemp () {
-  tdat = analogRead(tin)>>2; // Считать состояние датчика температуры и присвоить tdat
-  tdat = tdat + analogRead(tin)>>2;
+  tdat = analogRead(tin); // Считать состояние датчика температуры и присвоить tdat
+  tdat = tdat + analogRead(tin);
   tdat = tdat / 2;
-  tdat =map(tdat,0,80,25,450); // калибровка п умолчанию 0,430,25,310 90
+  tdat =map(tdat,320,650,25,400); // калибровка п умолчанию 0,430,25,310 90
   /*
   if (p_count < 3) {
     if (tdat - 30 < p_tdat) { tdat = p_tdat; p_count++; } //остывание за один такт на 30 градусов считаю невероятным и отбрасываю
@@ -51,12 +53,13 @@ void setup(){
   delay(1000); //в выдаче на сегменты используются ttl пины, поэтому для легкой прошивки введена задержка
   pinMode(nagr, OUTPUT);     // Порт нагрузки (паяльника) настраиваем на выход
   pinMode(tin, INPUT);
+  setPwmFrequency(nagr, 256);
   getFactTemp ();
   Input = tdat;
   Setpoint = getNeedTemp();
   myPID.SetMode(AUTOMATIC);
   myPID.SetSampleTime(count_delay);
-  myPID.SetOutputLimits(0, 200); // двже при шим=230 транзистор очень сильно греется, лучше не спешить 
+  myPID.SetOutputLimits(0, 255); // двже при шим=230 транзистор очень сильно греется, лучше не спешить 
   initSegment();
   analogWrite(nagr, 0);     //Вывод шим в нагрузку паяльника (выводим 0 - старт с выключенным паяльником - пока не определим состояние температуры)
   delay(count_delay/3);
@@ -79,7 +82,10 @@ void loop() {
   }
   myPID.Compute();
   nshim = Output;
-  analogWrite(nagr, nshim);
-//analogWrite(nagr, 220);
+  if (ustt == mintemp) {
+    analogWrite(nagr, 0);
+  } else {
+    analogWrite(nagr, nshim); }
+//analogWrite(nagr, 200);
 }
 
